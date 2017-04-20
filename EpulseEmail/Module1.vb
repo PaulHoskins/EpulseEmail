@@ -2,23 +2,25 @@
 Imports System.Xml
 Imports System.IO
 Imports EAGetMail
+Imports System.Net
+Imports System.Text
 Module Module1
-    Dim server, email, password, ssl, port, servtype, fromemail, subject As String
+    Dim server, email, password, ssl, port, servtype, fromemail, subject, posturl As String
 
     Sub Main()
-        setup()
-        Console.WriteLine("EpulseEmail version 1.00.00 20/04/2017")
-        Console.WriteLine("Connect To {0} {1} {2} {3} {4} {5} {6} {7} ", server, email, ssl, port, servtype, password, fromemail, subject)
+        Setup()
+        Console.WriteLine("EpulseEmail Version 1.00.00 24/04/2017")
+        Console.WriteLine("Connect To {0} {1} {2} {3} {4} {5} {6} {7} {8}", server, email, ssl, port, servtype, password, fromemail, subject, posturl)
 
-        ' GetEmail()
+        GetEmail()
 
-        MsgBox("Doone")
+        MsgBox("Done")
 
 
 
     End Sub
 
-    Sub setup()
+    Sub Setup()
 
 
 
@@ -37,26 +39,25 @@ Module Module1
             password = ds.Tables(0).Rows(i).Item(5)
             fromemail = ds.Tables(0).Rows(i).Item(6).tolower
             subject = ds.Tables(0).Rows(i).Item(7).tolower
+            posturl = ds.Tables(0).Rows(i).Item(8)
 
         Next
 
     End Sub
     Sub GetEmail()
-        Dim curpath As String = Directory.GetCurrentDirectory()
-        Dim mailbox As String = [String].Format("{0}\inbox", curpath)
 
-        ' If the folder is not existed, create it.
-        If Not Directory.Exists(mailbox) Then
-            Directory.CreateDirectory(mailbox)
-        End If
 
         Dim oClient As New MailClient("TryIt")
 
         Dim oServer As New MailServer(server, email, password, servtype)
 
-        oServer.SSLConnection = True
+        If ssl = "Y" Then
+            oServer.SSLConnection = True
+        End If
 
-        oServer.Port = 993
+        If port <> "" Then
+            oServer.Port = port
+        End If
 
         Try
             oClient.Connect(oServer)
@@ -66,28 +67,54 @@ Module Module1
                 Console.WriteLine("Index: {0}; Size: {1}; UIDL: {2}",
                         info.Index, info.Size, info.UIDL)
 
-                ' Receive email from IMAP4 server
                 Dim oMail As Mail = oClient.GetMail(info)
 
                 Console.WriteLine("From: {0}", oMail.From.ToString())
                 Console.WriteLine("Subject: {0}" & vbCr & vbLf, oMail.Subject)
-
-                ' Generate an email file name based on date time.
-                Dim d As System.DateTime = System.DateTime.Now
-                Dim cur As New System.Globalization.CultureInfo("en-US")
-                Dim sdate As String = d.ToString("yyyyMMddHHmmss", cur)
-                Dim fileName As String = [String].Format("{0}\{1}{2}{3}.eml",
-                    mailbox, sdate, d.Millisecond.ToString("d3"), i)
+                Console.WriteLine("Sent: {0}", oMail.SentDate)
 
 
+                Dim fromcase As String
 
-                ' Save email to local disk
-                'oMail.SaveAs(fileName, True)
+                fromcase = oMail.From.ToString().ToLower
 
-                ' Mark email as deleted in Hotmail Account
-                'oClient.Delete(info)
+                If fromcase.Contains(fromemail) Then
+                    Console.WriteLine("match: {0} {1}", fromemail, fromcase)
+
+
+                    Dim s As HttpWebRequest
+                    Dim enc As UTF8Encoding
+                    Dim postdata As String
+                    Dim postdatabytes As Byte()
+                    Console.WriteLine(posturl)
+
+                    s = HttpWebRequest.Create(posturl)
+                    enc = New System.Text.UTF8Encoding()
+                    postdata = "uidl=" + info.UIDL + "&from=" + oMail.From.ToString() + "&subject=" + oMail.Subject + "&body=" + oMail.TextBody
+                    postdatabytes = enc.GetBytes(postdata)
+                    s.Method = "POST"
+                    s.ContentType = "application/x-www-form-urlencoded"
+                    s.ContentLength = postdatabytes.Length
+
+
+                    Using stream = s.GetRequestStream()
+                        stream.Write(postdatabytes, 0, postdatabytes.Length)
+                    End Using
+
+                    Dim result = s.GetResponse()
+                    Dim resText As String
+                    resText = CType(result, HttpWebResponse).StatusDescription
+                    Console.WriteLine("Response = " & resText)
+                    If resText = "OK" Then
+
+                    End If
+
+                    ' Mark email as deleted in Account
+                    'oClient.Delete(info)
+
+                End If
+
             Next
-            ' Quit and purge emails marked as deleted from Hotmail IMAP4 server.
             oClient.Quit()
         Catch ep As Exception
             Console.WriteLine(ep.Message)
