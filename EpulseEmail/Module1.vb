@@ -4,6 +4,9 @@ Imports System.IO
 Imports EAGetMail
 Imports System.Net
 Imports System.Text
+Imports System.Net.Security
+Imports System.Security.Cryptography.X509Certificates
+
 Module Module1
     Dim server, email, password, ssl, port, servtype, fromemail, subject, posturl As String
 
@@ -14,15 +17,13 @@ Module Module1
 
         GetEmail()
 
-        MsgBox("Done")
+        'MsgBox("Done")
 
 
 
     End Sub
 
     Sub Setup()
-
-
 
         Dim xmlFile As XmlReader
         xmlFile = XmlReader.Create("c:\epulse\config.xml", New XmlReaderSettings())
@@ -46,9 +47,7 @@ Module Module1
     End Sub
     Sub GetEmail()
 
-
         Dim oClient As New MailClient("TryIt")
-
         Dim oServer As New MailServer(server, email, password, servtype)
 
         If ssl = "Y" Then
@@ -61,6 +60,7 @@ Module Module1
 
         Try
             oClient.Connect(oServer)
+
             Dim infos As MailInfo() = oClient.GetMailInfos()
             For i As Integer = 0 To infos.Length - 1
                 Dim info As MailInfo = infos(i)
@@ -69,10 +69,11 @@ Module Module1
 
                 Dim oMail As Mail = oClient.GetMail(info)
 
+                Console.WriteLine("Name: {0}", oMail.From.Name())
+                Console.WriteLine("Address: {0}", oMail.From.Address())
                 Console.WriteLine("From: {0}", oMail.From.ToString())
                 Console.WriteLine("Subject: {0}" & vbCr & vbLf, oMail.Subject)
                 Console.WriteLine("Sent: {0}", oMail.SentDate)
-
 
                 Dim fromcase As String
 
@@ -88,9 +89,11 @@ Module Module1
                     Dim postdatabytes As Byte()
                     Console.WriteLine(posturl)
 
+                    ServicePointManager.ServerCertificateValidationCallback = AddressOf AcceptAllCertifications
+
                     s = HttpWebRequest.Create(posturl)
                     enc = New System.Text.UTF8Encoding()
-                    postdata = "uidl=" + info.UIDL + "&from=" + oMail.From.ToString() + "&subject=" + oMail.Subject + "&body=" + oMail.TextBody
+                    postdata = "uidl=" + info.UIDL + "&from=" + oMail.From.ToString() + "&subject=" + oMail.Subject + "&body=" + oMail.TextBody + "&date=" + oMail.SentDate
                     postdatabytes = enc.GetBytes(postdata)
                     s.Method = "POST"
                     s.ContentType = "application/x-www-form-urlencoded"
@@ -109,6 +112,8 @@ Module Module1
 
                     End If
 
+
+
                     ' Mark email as deleted in Account
                     'oClient.Delete(info)
 
@@ -118,6 +123,7 @@ Module Module1
             oClient.Quit()
         Catch ep As Exception
             Console.WriteLine(ep.Message)
+
         End Try
 
 
@@ -126,4 +132,8 @@ Module Module1
 
 
     End Sub
+
+    Private Function AcceptAllCertifications(sender As Object, certificate As X509Certificate, chain As X509Chain, sslPolicyErrors As SslPolicyErrors) As Boolean
+        Return True
+    End Function
 End Module
