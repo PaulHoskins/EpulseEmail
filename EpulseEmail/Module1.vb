@@ -17,10 +17,6 @@ Module Module1
 
         GetEmail()
 
-        'MsgBox("Done")
-
-
-
     End Sub
 
     Sub Setup()
@@ -64,22 +60,22 @@ Module Module1
             Dim infos As MailInfo() = oClient.GetMailInfos()
             For i As Integer = 0 To infos.Length - 1
                 Dim info As MailInfo = infos(i)
+                Dim oMail As Mail = oClient.GetMail(info)
                 Console.WriteLine("Index: {0}; Size: {1}; UIDL: {2}",
                         info.Index, info.Size, info.UIDL)
-
-                Dim oMail As Mail = oClient.GetMail(info)
-
                 Console.WriteLine("Name: {0}", oMail.From.Name())
                 Console.WriteLine("Address: {0}", oMail.From.Address())
                 Console.WriteLine("From: {0}", oMail.From.ToString())
                 Console.WriteLine("Subject: {0}" & vbCr & vbLf, oMail.Subject)
                 Console.WriteLine("Sent: {0}", oMail.SentDate)
 
-                Dim fromcase As String
+                Dim fromcase, sublow As String
 
-                fromcase = oMail.From.ToString().ToLower
+                fromcase = oMail.From.Address().ToLower
+                sublow = oMail.Subject.ToLower
 
-                If fromcase.Contains(fromemail) Then
+                If fromcase.Contains(fromemail) And sublow.Contains(subject) And sublow.Contains("problem(s)") Then
+
                     Console.WriteLine("match: {0} {1}", fromemail, fromcase)
 
 
@@ -93,7 +89,7 @@ Module Module1
 
                     s = HttpWebRequest.Create(posturl)
                     enc = New System.Text.UTF8Encoding()
-                    postdata = "uidl=" + info.UIDL + "&from=" + oMail.From.ToString() + "&subject=" + oMail.Subject + "&body=" + oMail.TextBody + "&date=" + oMail.SentDate
+                    postdata = "uidl=" + info.UIDL + "&from=" + oMail.From.Address() + "&subject=" + oMail.Subject + "&body=" + oMail.TextBody + "&date=" + oMail.SentDate
                     postdatabytes = enc.GetBytes(postdata)
                     s.Method = "POST"
                     s.ContentType = "application/x-www-form-urlencoded"
