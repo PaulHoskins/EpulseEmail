@@ -43,7 +43,7 @@ Module Module1
     End Sub
     Sub GetEmail()
 
-        Dim oClient As New MailClient("TryIt")
+        Dim oClient As New MailClient("EG-B1374632949-00731-3DC3332UF1B46FBT-361C5EFV4E87E36U")
         Dim oServer As New MailServer(server, email, password, servtype)
 
         If ssl = "Y" Then
